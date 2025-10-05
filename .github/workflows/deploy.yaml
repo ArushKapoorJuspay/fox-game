@@ -93,7 +93,7 @@ jobs:
 
           # Create Git tag and push
           git tag "v$NEW_VERSION"
-          git push --follow-tags origin main
+          git push origin "v$NEW_VERSION"
 
           # Output version for downstream jobs
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
