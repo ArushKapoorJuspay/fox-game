@@ -112,17 +112,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      - name: List dist files
+        run: ls -R dist
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist   # folder to deploy
-          force_orphan: true    # clears old files to avoid conflicts
-          # optional: configure commit message
+          publish_dir: ./dist
+          force_orphan: true
           commit_message: "Deploy site from GitHub Actions"
