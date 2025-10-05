@@ -1,11 +1,11 @@
-name: Deploy to GitHub Pages
+name: Lint, Version, Build & Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
 
 permissions:
-  contents: write # ✅ needed for pushing version tags
+  contents: write   # needed for version tagging
   pages: write
   id-token: write
 
@@ -42,41 +42,40 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # ✅ needed to fetch tags
+          fetch-depth: 0
 
       - name: Setup Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Generate CalVer with daily counter
+      - name: Generate daily CalVer version
+        id: calver
         run: |
-          DATE=$(date +'%Y.%m.%d')   # e.g. 2025.10.05
-
-          # Find latest tag for today
-          LATEST_TAG=$(git tag --list "v$DATE.*" | sort -V | tail -n1)
-
-          if [ -z "$LATEST_TAG" ]; then
-            COUNT=0
+          DATE=$(date +'%Y.%m.%d')
+          # Get the last tag for today
+          LAST_TAG=$(git tag --list "v$DATE.*" --sort=-v:refname | head -n1)
+          if [ -z "$LAST_TAG" ]; then
+            SUFFIX=0
           else
-            COUNT=$(echo $LATEST_TAG | awk -F. '{print $4}')
-            COUNT=$((COUNT + 1))
+            SUFFIX=$(echo $LAST_TAG | awk -F. '{print $4}')
+            SUFFIX=$((SUFFIX + 1))
           fi
-
-          VERSION="$DATE.$(printf "%02d" $COUNT)"
-          echo "New version: $VERSION"
-
+          NEW_VERSION="$DATE.$(printf "%02d" $SUFFIX)"
+          echo "New version: $NEW_VERSION"
           # Update package.json
-          jq --arg v "$VERSION" '.version=$v' package.json > tmp.json && mv tmp.json package.json
-
+          jq --arg v "$NEW_VERSION" '.version=$v' package.json > tmp.json && mv tmp.json package.json
           git add package.json
-          git commit -m "chore(release): $VERSION [skip ci]" || echo "No changes to commit"
-          git tag "v$VERSION"
-          git push origin main --tags
+          git commit -m "chore(release): $NEW_VERSION [skip ci]" || echo "No changes to commit"
+          git tag "v$NEW_VERSION"
+          git push --follow-tags origin main
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    needs: version # ✅ only runs if versioning succeeds
+    needs: version
+    environment:
+      name: github-pages
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -100,38 +99,14 @@ jobs:
       - name: Build with Parcel
         run: npm run build
 
-      - name: Upload build output
+      - name: List dist files (debug)
+        run: ls -R dist
+
+      - name: Upload to GitHub Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Download build output
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: List dist files
-        run: ls -R dist
-
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          force_orphan: true
-          commit_message: "Deploy site from GitHub Actions"
+        id: deployment
+        uses: actions/deploy-pages@v4
