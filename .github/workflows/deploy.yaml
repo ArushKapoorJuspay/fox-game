@@ -123,5 +123,6 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist   # folder to deploy
+          force_orphan: true    # clears old files to avoid conflicts
           # optional: configure commit message
           commit_message: "Deploy site from GitHub Actions"
