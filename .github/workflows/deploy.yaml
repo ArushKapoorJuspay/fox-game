@@ -142,5 +142,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}  # Required for automatic push
           publish_dir: ./dist                        # Folder to deploy
-          force_orphan: true                          # Clears old files
+          force_orphan: true                         # Clears old files
           commit_message: "Deploy site from GitHub Actions"
